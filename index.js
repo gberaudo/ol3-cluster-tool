@@ -35,7 +35,7 @@ oReq.send();
 
 var clusterResolutions = [0, 20, 100, 250, 500, 1000, 1500, 2000, 3000];
 var clusterSource = new ol.source.StaticCluster({
-  distance: 10, // 40 meters of EPSG:3857
+  distance: 40, // meters
   source: source
 }, clusterResolutions);
 
@@ -43,7 +43,21 @@ var styleCache = {};
 var clusters = new ol.layer.Vector({
   source: clusterSource,
   style: function(feature, resolution) {
-    var size = feature.get('features').length;
+    var rindex = feature.get('resolution_index')
+    var firstAppearanceResolution = clusterResolutions[rindex];
+    if (resolution > firstAppearanceResolution) {
+      return null;
+    }
+    var childResolution = 0;
+    for (var i = clusterResolutions.length; i > -1; --i) {
+      var r = clusterResolutions[i];
+      if (r <= resolution) {
+        childResolution = r;
+        break;
+      }
+    }
+    var children = feature.get('children') || {childResolution: []};
+    var size = childResolution > 0 ? children[childResolution].length : 0;
     var style = styleCache[size];
     if (!style) {
       style = [new ol.style.Style({

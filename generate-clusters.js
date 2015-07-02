@@ -14,8 +14,26 @@ function exportClusterHierarchy(clusterSource) {
   features = features.map(function(f) {
     var clone = f.clone();
     clone.unset('features');
+    // Keep only the ids of the children features
+    var children = clone.get('children') || {};
+    for (var resolution in children) {
+      var values = children[resolution];
+      if (values.length === 0) {
+        delete children[resolution];
+      } else {
+        children[resolution] = values.map(function(childFeature) {
+          return childFeature.getId();
+        });
+      }
+    }
     clone.unset('kind');
-    clone.set('resolution', clusterSource.clusterResolutionsById[f.getId()]);
+    var rindex = clone.get('resolution_index');
+    if (rindex != clusterResolutions.length -1) {
+      clone.set('resolution', clusterResolutions[rindex + 1]);
+    } else {
+      clone.set('resolution', clusterResolutions[rindex] * 1.5);
+    }
+    clone.unset('resolution_index');
     clone.setId(f.getId());
     clone.getGeometry().transform(epsg3857, epsg4326);
     return clone;

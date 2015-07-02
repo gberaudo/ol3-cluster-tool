@@ -33,7 +33,6 @@ ol.source.StaticCluster = function(options, resolutionSteps) {
     projection: options.projection
   });
 
-
   /**
    * Intervals where the clustering will be computed.
    * @type {Array.<number>}
@@ -41,29 +40,11 @@ ol.source.StaticCluster = function(options, resolutionSteps) {
    */
   this.resolutionSteps_ = resolutionSteps;
 
-
-  /**
-   * @type {Array.<Array.<ol.Feature>>}
-   * @private
-   */
-  this.resolutionFeatures_ = [];
-
-
-  /**
-   * @type {number|undefined}
-   * @private
-   */
-  this.resolution_ = undefined;
-
-
   /**
    * @type {number}
    * @private
    */
   this.distance_ = goog.isDef(options.distance) ? options.distance : 20;
-
-
-  this.lastUpdatedFeaturesIndex = -1;
 
   /**
    * @type {ol.source.Vector}
@@ -71,7 +52,7 @@ ol.source.StaticCluster = function(options, resolutionSteps) {
    */
   this.source_ = options.source;
 
-  this.clusterResolutionsById = undefined;
+  this.updating = false;
 
   this.source_.on(goog.events.EventType.CHANGE,
       ol.source.StaticCluster.prototype.onSourceChange_, this);
@@ -94,30 +75,7 @@ ol.source.StaticCluster.prototype.getSource = function() {
  */
 ol.source.StaticCluster.prototype.loadFeatures = function(extent, resolution,
     projection) {
-  // First load the underlying source features
   this.source_.loadFeatures(extent, resolution, projection);
-
-  // Select the set of clustered features to show
-  if (resolution !== this.resolution_ && this.resolutionSteps_.length > 0 &&
-      this.resolutionFeatures_.length > 0) {
-    console.log('Res', resolution);
-    this.resolution_ = resolution;
-    var nextIdx = goog.array.findIndex(this.resolutionSteps_, function(r) {
-      return r >= resolution;
-    });
-    var idx = nextIdx - 1;
-    if (idx === -2) {
-      idx = this.resolutionSteps_.length - 1;
-    }
-    if (idx == this.lastUpdatedFeaturesIndex) {
-      console.log('Skipped updating feature for same index', idx);
-      return;
-    }
-    this.clear();
-    console.log('Updating feature with features at index', idx);
-    this.addFeatures(this.resolutionFeatures_[idx]);
-    this.lastUpdatedFeaturesIndex = idx;
-  }
 };
 
 
@@ -126,125 +84,118 @@ ol.source.StaticCluster.prototype.loadFeatures = function(extent, resolution,
  * @private
  */
 ol.source.StaticCluster.prototype.onSourceChange_ = function() {
+  if (this.updating) {
+    return;
+  }
+  this.updating = true;
+
   // Regenerate the cluster features for all resolution intervals
   console.log('Source change');
-  var features = this.source_.getFeatures();
-  this.resolutionFeatures_.length = 0;
-  var steps = this.resolutionSteps_;
-  steps.every(function(resolution) {
+  var stepZeroFeatures = this.source_.getFeatures();
+  var featuresAtStep = stepZeroFeatures;
+
+  this.resolutionSteps_.forEach(function(resolution, index) {
     // Create cluster at a given resolution using the features
     // at the previous resolution.
-    features = this.clusterFeatures_(resolution, features);
-    this.resolutionFeatures_.push(features);
-    return true; // features.length > 1; // as of now we require
-    // this.resolutionSteps.length == this.resolutionFeatures_.length
-  }, this);
-  console.log('Generated',
-      this.resolutionFeatures_.reduce(function(previous, current, i, all) {
-        return previous + ' (' + steps[i] + ', ' + current.length + ')';
-      }, ''));
-
-  this.clusterResolutionsById = this.getMinVisibilityResolutionsById();
-  this.changed();
-};
-
-
-/**
- * Compute the resolution at which is underlying feature starts to be visible
- * (eventually as the owner of a cluster).
- * @api
- * @return {Object.<string, number>} resolution by feature id
- */
-ol.source.StaticCluster.prototype.getMinVisibilityResolutionsById = function() {
-  var resolutionSteps = this.resolutionSteps_;
-  var clustersByStep = this.resolutionFeatures_;
-  var resolutionsById = {};
-
-  // FIXME: hardcoding some maximum cut resolution value
-  var resolution = resolutionSteps[resolutionSteps.length - 1] * 1.5;
-
-  var populateResolutionsById = goog.bind(function(cluster) {
-    var idstr = cluster.getId().toString();
-    if (!resolutionsById[idstr]) {
-      // It is the first time we encountered this feature id.
-      // The source feature with this id will be displayed starting from
-      // the previous resolution.
-      resolutionsById[idstr] = resolution;
-    }
+    featuresAtStep = this.clusterFeatures_(featuresAtStep, index);
   }, this);
 
-  for (var i = resolutionSteps.length - 1; i >= 0; --i) {
-    var clusters = clustersByStep[i];
-    clusters.forEach(populateResolutionsById);
-    resolution = resolutionSteps[i];
-  }
-
-  return resolutionsById;
+  this.clear(true);
+  this.addFeatures(stepZeroFeatures);
+  this.updating = false;
 };
 
 
 /**
  * Create a cluster of features at a given resolution.
- * @param {number} resolution
- * @param {Array.<ol.Feature>} leafFeatures cluster at previous resolution
+ * @param {Array.<ol.Feature>} previousStepFeatures cluster at previous step
+ * @param {number} rindex
  * @return {Array.<ol.Feature>} cluster at this resolution
  * @private
  */
-ol.source.StaticCluster.prototype.clusterFeatures_ = function(resolution,
-    leafFeatures) {
-  console.log('generating cluster for', resolution);
-  /** @type {Array.<ol.Feature>} */
-  var clusterFeatures = [];
+ol.source.StaticCluster.prototype.clusterFeatures_ =
+    function(previousStepFeatures, rindex) {
 
-  if (resolution === 0) {
+  var clusteringResolution = this.resolutionSteps_[rindex];
+  console.log('generating cluster at', clusteringResolution);
+
+  if (clusteringResolution === 0) {
     // Special case for resolution 0 where neighboring should be disabled
-    leafFeatures.forEach(goog.bind(function(feature) {
-      var newClusterFeature = this.createCluster_([feature]);
-      newClusterFeature.set('resolution', 0);
-      clusterFeatures.push(newClusterFeature);
-    }, this));
-    return clusterFeatures;
+    previousStepFeatures.forEach(function(feature) {
+      feature.set('resolution_index', 0);
+    });
+    return previousStepFeatures;
   }
 
   var extent = ol.extent.createEmpty();
-  var mapDistance = this.distance_ * resolution;
-  var leafSource = new ol.source.Vector({features: leafFeatures});
+  var mapDistance = this.distance_ * clusteringResolution;
+  var leafSource = new ol.source.Vector({features: previousStepFeatures});
+
+  /** @type {Array.<ol.Feature>} */
+  var featuresAtStep = [];
 
   /**
    * @type {Object.<string, boolean>}
    */
   var clustered = {};
 
-  leafFeatures.forEach(goog.bind(function(feature) {
-    if (!goog.object.containsKey(clustered, goog.getUid(feature).toString())) {
+  previousStepFeatures.forEach(goog.bind(function(feature) {
+    var uid = goog.getUid(feature).toString();
+    if (!goog.object.containsKey(clustered, uid)) {
       var geometry = feature.getGeometry();
       goog.asserts.assert(geometry instanceof ol.geom.Point);
       var coordinates = geometry.getCoordinates();
+
+      // Find the features close to the current feature
       ol.extent.createOrUpdateFromCoordinate(coordinates, extent);
       ol.extent.buffer(extent, mapDistance, extent);
-
       var neighbors = leafSource.getFeaturesInExtent(extent);
+
+      // Only keep neighbors not belonging to another cluster
       goog.asserts.assert(neighbors.length >= 1);
       neighbors = goog.array.filter(neighbors, function(neighbor) {
-        var uid = goog.getUid(neighbor).toString();
-        if (!goog.object.containsKey(clustered, uid)) {
+        var nuid = goog.getUid(neighbor).toString();
+        if (!goog.object.containsKey(clustered, nuid)) {
           // This neighbor has not been clustered yet.
-          // Mark it as clustered and keep it in the list
-          clustered[uid] = true;
+          // Mark it as clustered and keep it.
+          // Note that 'feature' is included in the neighbors.
+          clustered[nuid] = true;
           return true;
         } else {
           // Discard already clustered neighbor
           return false;
         }
       });
-      var newClusterFeature = this.createCluster_(neighbors);
-      newClusterFeature.set('resolution', resolution);
-      clusterFeatures.push(newClusterFeature);
+
+      // Choose a feature out of the neighbors
+      var chosenFeature = this.chooseFeature_(neighbors);
+
+      // Create children array
+      var children = [];
+      neighbors.forEach(function(f) {
+        // Remove chosen feature from children
+        if (chosenFeature !== f) {
+          children.push(f);
+        }
+      });
+
+      // Update the 'children' property with the children at this resolution
+      var childrenObject = chosenFeature.get('children') || {};
+      childrenObject[clusteringResolution] = children;
+      chosenFeature.set('children', childrenObject);
+
+      // Update the resolution index property
+      chosenFeature.set('resolution_index', rindex);
+
+      // Add the chosen feature to current step features
+      featuresAtStep.push(chosenFeature);
     }
   }, this));
   goog.asserts.assert(
-      goog.object.getCount(clustered) === leafFeatures.length);
-  return clusterFeatures;
+      goog.object.getCount(clustered) === previousStepFeatures.length);
+
+  // Return the array of the chosen features for this step
+  return featuresAtStep;
 };
 
 
@@ -253,7 +204,7 @@ ol.source.StaticCluster.prototype.clusterFeatures_ = function(resolution,
  * @return {ol.Feature}
  * @private
  */
-ol.source.StaticCluster.prototype.createCluster_ = function(features) {
+ol.source.StaticCluster.prototype.chooseFeature_ = function(features) {
   var length = features.length;
   var centroid = [0, 0];
   features.forEach(function(feature) {
@@ -276,8 +227,6 @@ ol.source.StaticCluster.prototype.createCluster_ = function(features) {
       closestFeature = feature;
     }
   });
-  var cluster = closestFeature.clone();
-  cluster.setId(closestFeature.getId());
-  cluster.set('features', features);
-  return cluster;
+
+  return closestFeature;
 };
