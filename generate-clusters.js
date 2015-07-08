@@ -4,6 +4,7 @@ var fs = require('fs');
 
 // Grid for which resolutions the clustering will be computed
 var clusterResolutions = [0, 20, 100, 250, 500, 1000, 1500, 2000, 3000];
+var clusterDistance = 20;
 
 var format = new ol.format.GeoJSON();
 
@@ -55,7 +56,7 @@ function generateCluster(infile, outfile) {
     });
 
     var clusterSource = new ol.source.StaticCluster({
-      distance: 40,
+      distance: clusterDistance,
       source: source
     }, clusterResolutions);
 
