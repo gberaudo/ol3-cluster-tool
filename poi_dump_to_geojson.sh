@@ -2,7 +2,7 @@
 # Check with jparse
 
 filein=$1
-fileout=$1.geojson
+fileout=${2-"$1.geojson"}
 
 echo '{"type":"FeatureCollection", "features": [' > $fileout
 while read p
