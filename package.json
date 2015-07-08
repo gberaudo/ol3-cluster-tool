@@ -1,0 +1,10 @@
+{
+  "name": "ol3-cluster-tool",
+  "version": "0.0.1",
+  "description": "A package.json to make npm happy",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/gberaudo/ol3-cluster-tool.git"
+  }
+}
