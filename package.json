@@ -6,5 +6,8 @@
   "repository": {
     "type": "git",
     "url": "git://github.com/gberaudo/ol3-cluster-tool.git"
+  },
+  "dependencies": {
+    "phantomjs": "1.9.17"
   }
 }
