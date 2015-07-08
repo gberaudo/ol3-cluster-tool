@@ -1,6 +1,6 @@
-var ol = require('./ol3/build/ol-debug');
+var ol = require('./node_modules/openlayers/build/ol-debug');
 var fs = require('fs');
-
+var system = require('system');
 
 // Grid for which resolutions the clustering will be computed
 var clusterResolutions = [0, 20, 100, 250, 500, 1000, 1500, 2000, 3000];
@@ -74,8 +74,20 @@ function generateCluster(infile, outfile) {
   }
 }
 
+var args = system.args;
+var infilenames;
+if (args.length === 1) {
+  infilenames = fs.list('./input/');
+} else {
+  infilenames = args.slice(1).map(function(fullname) {
+    if (fullname.indexOf('input/') === -1) {
+      console.log('Error, all input filenames should start with input/', fullname);
+      phantom.exit();
+    }
+    return fullname.substring(fullname.lastIndexOf('/') + 1);
+  });
+}
 
-var infilenames = fs.list('./input/');
 for (var i = 0; i < infilenames.length; ++i) {
   var infile = './input/' + infilenames[i];
   var outfile = './output/clustered_' + infilenames[i];

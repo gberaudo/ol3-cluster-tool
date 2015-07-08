@@ -8,6 +8,7 @@
     "url": "git://github.com/gberaudo/ol3-cluster-tool.git"
   },
   "dependencies": {
-    "phantomjs": "1.9.17"
+    "phantomjs": "1.9.17",
+    "openlayers": "openlayers/ol3#v3.5.0"
   }
 }
