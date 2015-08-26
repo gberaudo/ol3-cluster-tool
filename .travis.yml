@@ -1,0 +1,12 @@
+language: python
+sudo: false
+cache:
+  directories:
+    - node_modules
+
+before_script:
+  - cp examples/raw/* raw/
+
+script:
+  - make
+  - grep Point output/clustered_test.geojson
