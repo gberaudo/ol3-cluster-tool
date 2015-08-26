@@ -9,6 +9,6 @@
   },
   "dependencies": {
     "phantomjs": "1.9.17",
-    "openlayers": "openlayers/ol3#v3.5.0"
+    "openlayers": "openlayers/ol3#4045e06aa906b792f1677e662769aba048a9a48c"
   }
 }
