@@ -24,4 +24,4 @@ input/%.geojson: raw/%
 
 
 output/clustered_%.geojson: input/%.geojson .build/ol3.timestamp generate-clusters.js .build/node-modules.timestamp
-	node_modules/phantomjs-prebuilt/bin/phantomjs generate-clusters.js $<
+	node_modules/.bin/phantomjs generate-clusters.js $<

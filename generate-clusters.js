@@ -6,6 +6,9 @@ var system = require('system');
 var clusterResolutions = [0, 20, 100, 250, 500, 1000, 1500, 2000, 3000];
 var clusterDistance = 20;
 
+// 5 at resolution 0, 40 at resolution 3000
+var clusterDistanceFactors = [1 / 4, 2];
+
 var format = new ol.format.GeoJSON();
 
 function exportClusterHierarchy(clusterSource) {
@@ -58,7 +61,7 @@ function generateCluster(infile, outfile) {
     var clusterSource = new ol.source.StaticCluster({
       distance: clusterDistance,
       source: source
-    }, clusterResolutions);
+    }, clusterResolutions, clusterDistanceFactors);
 
     source.changed();
 

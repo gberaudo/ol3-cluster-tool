@@ -4,6 +4,7 @@ goog.require('goog.array');
 goog.require('goog.asserts');
 goog.require('goog.events.EventType');
 goog.require('goog.object');
+goog.require('goog.math');
 goog.require('ol.Feature');
 goog.require('ol.coordinate');
 goog.require('ol.extent');
@@ -22,10 +23,11 @@ goog.require('ol.source.Vector');
  * @constructor
  * @param {olx.source.ClusterOptions} options
  * @param {Array.<number>} resolutionSteps
+ * @param {Array.<number>} distanceFactors
  * @extends {ol.source.Vector}
  * @api
  */
-ol.source.StaticCluster = function(options, resolutionSteps) {
+ol.source.StaticCluster = function(options, resolutionSteps, distanceFactors) {
   goog.base(this, {
     attributions: options.attributions,
     extent: options.extent,
@@ -45,6 +47,12 @@ ol.source.StaticCluster = function(options, resolutionSteps) {
    * @private
    */
   this.distance_ = goog.isDef(options.distance) ? options.distance : 20;
+
+  /**
+   * @type {Array.<number>}
+   * @private
+   */
+  this.distanceRange_ = distanceFactors;
 
   /**
    * @type {ol.source.Vector}
@@ -129,6 +137,12 @@ ol.source.StaticCluster.prototype.clusterFeatures_ =
 
   var extent = ol.extent.createEmpty();
   var mapDistance = this.distance_ * clusteringResolution;
+  if (this.distanceRange_) {
+    var maxResolution = this.resolutionSteps_[this.resolutionSteps_.length - 1];
+    var t =  clusteringResolution / maxResolution;
+    var lerp = goog.math.lerp;
+    mapDistance *= lerp(this.distanceRange_[0], this.distanceRange_[1], t);
+  }
   var leafSource = new ol.source.Vector({features: previousStepFeatures});
 
   /** @type {Array.<ol.Feature>} */
