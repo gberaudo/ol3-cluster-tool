@@ -1,14 +1,15 @@
 {
   "name": "ol3-cluster-tool",
-  "version": "0.0.1",
-  "description": "A package.json to make npm happy",
+  "version": "0.0.2",
+  "description": "Tool for generating minimal static cluster",
   "scripts": {},
+  "license": "BSD-2-Clause",
   "repository": {
     "type": "git",
     "url": "git://github.com/gberaudo/ol3-cluster-tool.git"
   },
   "dependencies": {
-    "phantomjs": "1.9.17",
-    "openlayers": "openlayers/ol3#4045e06aa906b792f1677e662769aba048a9a48c"
+    "phantomjs-prebuilt": "2.1.3",
+    "openlayers": "openlayers/ol3#v3.13.0"
   }
 }
