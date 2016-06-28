@@ -1,5 +1,6 @@
 goog.provide('ol.source.StaticCluster');
 
+
 goog.require('goog.array');
 goog.require('goog.asserts');
 goog.require('goog.events.EventType');
@@ -28,7 +29,7 @@ goog.require('ol.source.Vector');
  * @api
  */
 ol.source.StaticCluster = function(options, resolutionSteps, distanceFactors) {
-  goog.base(this, {
+  ol.source.Vector.call(this, {
     attributions: options.attributions,
     extent: options.extent,
     logo: options.logo,
@@ -65,7 +66,7 @@ ol.source.StaticCluster = function(options, resolutionSteps, distanceFactors) {
   this.source_.on(goog.events.EventType.CHANGE,
       ol.source.StaticCluster.prototype.onSourceChange_, this);
 };
-goog.inherits(ol.source.StaticCluster, ol.source.Vector);
+ol.inherits(ol.source.StaticCluster, ol.source.Vector);
 
 
 /**
